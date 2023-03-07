@@ -1,5 +1,6 @@
 package com.llamoss.qrealm;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
@@ -14,25 +15,35 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.llamoss.qrealm.databinding.ActivityMainBinding;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
+    private static final int REQUEST_CAMERA = 0;
     private ActivityMainBinding binding;
     private ImageCapture imageCapture;
     private VideoCapture<Recorder> videoCapture;
     private Recording recording;
     private ExecutorService cameraExecutor;
-    private final String[] REQUESTED_PERMISSIONS = {
-            Manifest.permission.CAMERA};
+    private final ArrayList<String> REQUESTED_PERMISSIONS = new ArrayList<String>();
+
     private final int REQUEST_CODE = 10;
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
 
@@ -44,12 +55,19 @@ public class MainActivity extends AppCompatActivity {
         binding.imageCaptureButton.setOnClickListener(v -> takePhoto());
         binding.videoCaptureButton.setOnClickListener(v -> captureVideo());
         cameraExecutor = Executors.newSingleThreadExecutor();
+        REQUESTED_PERMISSIONS.addAll((Arrays.asList(Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO)));
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P)
+        {
+            REQUESTED_PERMISSIONS.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        }
         if (allPermissionGranted())
         {
             startCamera();
         }
         else {
-            ActivityCompat.requestPermissions(this, REQUESTED_PERMISSIONS, REQUEST_CODE);
+            ActivityCompat.requestPermissions(this,
+                    REQUESTED_PERMISSIONS.toArray(new String[0]), REQUEST_CODE);
         }
     }
 
@@ -90,8 +108,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                                           int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_CODE) {// If request is cancelled, the result arrays are empty.
             if (grantResults.length > 0 &&
@@ -103,7 +121,6 @@ public class MainActivity extends AppCompatActivity {
                 // At the same time, respect the user's decision. Don't link to
                 // system settings in an effort to convince the user to change
                 // their decision.
-
                 Toast.makeText(this,
                         "Permissions not granted by the user.",
                         Toast.LENGTH_LONG).show();
